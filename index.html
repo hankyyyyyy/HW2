@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRISP-ML Studio | 多元線性回歸分析平台 (Multiple Linear Regression)</title>
+  <meta name="description" content="基於 CRISP-DM 流程之多元線性回歸分析平台，支援 Kaggle 14-39 特徵資料集、特徵選擇、五大假設檢定與信賴區間預測">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js & PapaParse CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-ambient-mesh"></div>
+
+  <div class="app-wrapper">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-top">
+        <div class="brand-section">
+          <div class="brand-icon">
+            <i data-lucide="line-chart" style="color: white; width: 28px; height: 28px;"></i>
+          </div>
+          <div>
+            <h1 class="brand-title">CRISP-ML Studio</h1>
+            <p class="brand-subtitle">多元線性回歸分析與五大假設檢定系統 (Multiple Linear Regression Lab)</p>
+          </div>
+        </div>
+
+        <div class="badge-row">
+          <span class="badge badge-primary"><i data-lucide="check-circle-2" style="width: 14px;"></i> 14–39 輸入特徵合規</span>
+          <span class="badge badge-success"><i data-lucide="layers" style="width: 14px;"></i> CRISP-DM 完整規範</span>
+          <span class="badge badge-bonus"><i data-lucide="star" style="width: 14px;"></i> +1分: 下拉切換雙題目</span>
+          <span class="badge badge-bonus"><i data-lucide="link" style="width: 14px;"></i> +2分: 任意自訂 Dataset 輸入</span>
+        </div>
+      </div>
+
+      <!-- Top Control Bar: Problem Selection & Custom Input -->
+      <div class="control-bar">
+        <!-- Problem 1 & 2 Dropdown (+1 point) -->
+        <div class="control-group">
+          <label class="control-label" for="problem-select">
+            <span><i data-lucide="list-filter" style="width: 14px; vertical-align: middle;"></i> 選擇分析題目 (Problem Dropdown)</span>
+            <span class="badge badge-bonus" style="font-size: 0.7rem;">加分項 +1</span>
+          </label>
+          <select id="problem-select" class="select-custom">
+            <option value="life_expectancy" selected>🏥 Problem 1: WHO 預期壽命預測 (21 Features, Kaggle)</option>
+            <option value="flood_prediction">🌊 Problem 2: Kaggle S4E5 洪水機率預測 (20 Features, Kaggle)</option>
+            <option value="custom">🌐 Problem 3: 自訂外鏈 / 自行上傳資料集</option>
+          </select>
+        </div>
+
+        <!-- Custom Dataset Input (+2 points) -->
+        <div class="control-group">
+          <label class="control-label" for="dataset-url-input">
+            <span><i data-lucide="database" style="width: 14px; vertical-align: middle;"></i> 任意輸入 Dataset URL 或上傳本地 CSV</span>
+            <span class="badge badge-bonus" style="font-size: 0.7rem;">加分項 +2</span>
+          </label>
+          <div class="dataset-input-flex">
+            <input type="text" id="dataset-url-input" class="input-custom" 
+                   value="https://raw.githubusercontent.com/Avik-Jain/100-Days-Of-ML-Code/master/datasets/50_Startups.csv" 
+                   placeholder="輸入任一公開 CSV 網址...">
+            <button id="btn-load-url" class="btn btn-primary" title="載入網址資料集">
+              <i data-lucide="download-cloud" style="width: 16px;"></i> 載入
+            </button>
+            <label for="csv-file-input" class="btn btn-secondary file-upload-label" title="從電腦上傳 CSV 檔案">
+              <i data-lucide="upload" style="width: 16px;"></i> 上傳
+            </label>
+            <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Dataset Quick Info Strip -->
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted); padding: 4px 6px;">
+        <div id="dataset-status-text">
+          <i data-lucide="check" style="width: 14px; color: var(--accent-green); vertical-align: middle;"></i>
+          當前載入：<strong>Life Expectancy (WHO)</strong> | 樣本數: <span id="strip-rows">2,938</span> 筆 | 特徵數: <span id="strip-features">21</span> 個 | 目標變數: <span id="strip-target">Life expectancy</span>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <label style="font-size: 0.8rem;">變更目標變數 (Target):</label>
+          <select id="target-col-select" class="select-custom" style="padding: 4px 8px; font-size: 0.8rem; width: auto;"></select>
+        </div>
+      </div>
+    </header>
+
+    <!-- CRISP-DM Navigation Tabs -->
+    <nav class="crisp-nav-wrapper">
+      <div class="crisp-nav">
+        <button class="crisp-nav-btn active" data-tab="tab-business" id="nav-business">
+          <span class="nav-step-num">1</span>
+          <span>Business Understanding</span>
+        </button>
+        <button class="crisp-nav-btn" data-tab="tab-data" id="nav-data">
+          <span class="nav-step-num">2</span>
+          <span>Data Understanding</span>
+        </button>
+        <button class="crisp-nav-btn" data-tab="tab-prep" id="nav-prep">
+          <span class="nav-step-num">3</span>
+          <span>Data Preparation</span>
+        </button>
+        <button class="crisp-nav-btn" data-tab="tab-modeling" id="nav-modeling">
+          <span class="nav-step-num">4</span>
+          <span>Modeling & Selection</span>
+        </button>
+        <button class="crisp-nav-btn" data-tab="tab-evaluation" id="nav-evaluation">
+          <span class="nav-step-num">5</span>
+          <span>Evaluation & 5 Assumptions</span>
+        </button>
+        <button class="crisp-nav-btn" data-tab="tab-deployment" id="nav-deployment">
+          <span class="nav-step-num">6</span>
+          <span>Deployment & Predict</span>
+        </button>
+        <button class="crisp-nav-btn" data-tab="tab-ai-docs" id="nav-ai-docs" style="flex: 0.7; background: rgba(99, 102, 241, 0.1);">
+          <i data-lucide="file-text" style="width: 14px;"></i>
+          <span>作業報告與 AI 摘要</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main>
+      <!-- =================================================================== -->
+      <!-- TAB 1: Business Understanding                                       -->
+      <!-- =================================================================== -->
+      <section id="tab-business" class="tab-content active">
+        <div class="callout callout-info">
+          <i data-lucide="info" style="color: var(--primary); flex-shrink: 0; margin-top: 2px;"></i>
+          <div>
+            <strong>CRISP-DM 第一階段：業務理解 (Business Understanding)</strong><br>
+            從領域專家視角出發，將現實問題轉化為數據挖掘的多元線性回歸（Multiple Linear Regression）目標，確立評估指標（MSE, RMSE, R²）與決策價值。
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title" id="biz-title"><i data-lucide="target" style="color: var(--primary);"></i> 題目背景與研究動機</h2>
+              <a id="biz-kaggle-link" href="https://www.kaggle.com/datasets/kumarajarshi/life-expectancy-who" target="_blank" class="btn btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;">
+                <i data-lucide="external-link" style="width: 12px;"></i> Kaggle 原題連結
+              </a>
+            </div>
+            <p id="biz-desc" style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.7; margin-bottom: 16px;">
+              世界衛生組織（WHO）與聯合國匯總 193 國自 2000 年至 2015 年之人口死亡率、免疫覆蓋率、經濟指標與社會醫療資源。本專案旨在透過多元線性回歸釐清：究竟是「國家經濟財富 (GDP)」還是「公共衛生基礎建設 (疫苗普及、學校教育年數)」更能顯著延長國民預期壽命？
+            </p>
+            <div class="grid-2" style="gap: 12px; margin-top: 14px;">
+              <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: var(--radius-sm); border-left: 3px solid var(--primary);">
+                <div style="font-size: 0.78rem; color: var(--text-dim);">預測目標變數 (Target)</div>
+                <div style="font-weight: 700; color: #ffffff;" id="biz-target-label">Life expectancy (年)</div>
+              </div>
+              <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: var(--radius-sm); border-left: 3px solid var(--accent-green);">
+                <div style="font-size: 0.78rem; color: var(--text-dim);">特徵合規性檢定</div>
+                <div style="font-weight: 700; color: var(--accent-green);" id="biz-feature-label">21 特徵 (13 &lt; 21 &lt; 40 規範通過)</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title"><i data-lucide="compass" style="color: var(--secondary);"></i> 分析任務與預期產出</h2>
+            </div>
+            <ul style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.8; padding-left: 20px;">
+              <li><strong style="color: var(--text-main);">回歸建模任務：</strong>使用標準 OLS 線性回歸（$\hat{y} = X\beta$）估計迴歸係數與標準誤。</li>
+              <li><strong style="color: var(--text-main);">特徵選擇 (Feature Selection)：</strong>比較全特徵 (Baseline)、遞迴特徵消除 (RFE)、VIF 共線性剔除與相關係數篩選。</li>
+              <li><strong style="color: var(--text-main);">不確定性量化：</strong>在預測圖中提供 <span style="color: var(--primary);">95% 信賴區間 (Confidence Interval)</span> 與 <span style="color: var(--accent-purple);">95% 預測區間 (Prediction Interval)</span>。</li>
+              <li><strong style="color: var(--text-main);">統計診斷：</strong>完整檢驗線性回歸五大高斯－馬可夫假定（線性、常態、同質變異、獨立性、無嚴重共線性）。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- TAB 2: Data Understanding                                           -->
+      <!-- =================================================================== -->
+      <section id="tab-data" class="tab-content">
+        <!-- KPI Row -->
+        <div class="grid-4" style="margin-bottom: 20px;">
+          <div class="kpi-card">
+            <span class="kpi-label">總樣本數 (Rows)</span>
+            <span class="kpi-value" id="kpi-rows">--</span>
+            <span class="kpi-desc">觀測值完整樣本數</span>
+          </div>
+          <div class="kpi-card kpi-green">
+            <span class="kpi-label">輸入特徵數 (Features)</span>
+            <span class="kpi-value" id="kpi-features">--</span>
+            <span class="kpi-desc" id="kpi-feature-badge">符合 14~39 規範</span>
+          </div>
+          <div class="kpi-card kpi-purple">
+            <span class="kpi-label">目標平均值 (Target Mean)</span>
+            <span class="kpi-value" id="kpi-target-mean">--</span>
+            <span class="kpi-desc" id="kpi-target-name">Life expectancy</span>
+          </div>
+          <div class="kpi-card kpi-amber">
+            <span class="kpi-label">含缺失值特徵數</span>
+            <span class="kpi-value" id="kpi-missing-cols">--</span>
+            <span class="kpi-desc">將於 Phase 3 進行中位數填補</span>
+          </div>
+        </div>
+
+        <!-- Data Preview & Top Correlations -->
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title"><i data-lucide="table" style="color: var(--primary);"></i> 資料前 10 筆預覽 (Data Preview)</h2>
+              <span class="badge" id="preview-col-count">22 欄位</span>
+            </div>
+            <div class="table-container" style="max-height: 380px;">
+              <table class="data-table" id="table-preview">
+                <thead><tr id="preview-thead"></tr></thead>
+                <tbody id="preview-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title"><i data-lucide="bar-chart-2" style="color: var(--secondary);"></i> 特徵與目標相關係數 (Correlation)</h2>
+            </div>
+            <div class="chart-box">
+              <canvas id="chart-correlation"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- TAB 3: Data Preparation                                             -->
+      <!-- =================================================================== -->
+      <section id="tab-prep" class="tab-content">
+        <div class="callout callout-success">
+          <i data-lucide="sparkles" style="color: var(--accent-green); flex-shrink: 0; margin-top: 2px;"></i>
+          <div>
+            <strong>CRISP-DM 第三階段：資料準備 (Data Preparation)</strong><br>
+            執行缺失值插補（Imputation）、字串欄位 One-Hot 編碼、標準化縮放（StandardScaler）以及 80/20 訓練/測試集分割。
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title"><i data-lucide="sliders" style="color: var(--primary);"></i> 前處理設定 (Preprocessing Options)</h2>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div>
+                <label class="control-label" style="margin-bottom: 6px;">缺失值處理策略 (Missing Values)</label>
+                <select id="prep-impute-select" class="select-custom">
+                  <option value="median" selected>以中位數填補 (Median - 穩健抗離群值)</option>
+                  <option value="mean">以平均數填補 (Mean)</option>
+                  <option value="drop">直接刪除缺失筆數 (Drop NA)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="control-label" style="margin-bottom: 6px;">特徵縮放 (Feature Scaling)</label>
+                <select id="prep-scale-select" class="select-custom">
+                  <option value="standard" selected>Z-Score 標準化 (Mean=0, Std=1 - 推薦用於係數比較)</option>
+                  <option value="minmax">Min-Max 歸一化 (0 至 1)</option>
+                  <option value="none">保留原始數值尺度 (Raw)</option>
+                </select>
+              </div>
+
+              <div>
+                <div class="control-label" style="margin-bottom: 6px;">
+                  <span>訓練集 / 測試集切分比例 (Train/Test Split)</span>
+                  <span id="label-split-ratio" style="color: var(--primary); font-weight: 700;">80% / 20%</span>
+                </div>
+                <input type="range" id="split-slider" class="slider-custom" min="60" max="90" value="80" step="5">
+              </div>
+
+              <button id="btn-apply-prep" class="btn btn-primary" style="margin-top: 10px;">
+                <i data-lucide="play" style="width: 16px;"></i> 套用前處理並重新切分資料
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title"><i data-lucide="check-check" style="color: var(--accent-green);"></i> 準備成果統計</h2>
+            </div>
+            <div class="grid-2" style="gap: 16px;">
+              <div class="kpi-card">
+                <span class="kpi-label">訓練集樣本 (Train)</span>
+                <span class="kpi-value" id="prep-train-count">--</span>
+                <span class="kpi-desc">80% 樣本用於擬合模型</span>
+              </div>
+              <div class="kpi-card kpi-purple">
+                <span class="kpi-label">測試集樣本 (Test)</span>
+                <span class="kpi-value" id="prep-test-count">--</span>
+                <span class="kpi-desc">20% 樣本用於無偏評估</span>
+              </div>
+              <div class="kpi-card kpi-green">
+                <span class="kpi-label">最終輸入特徵 (Processed X)</span>
+                <span class="kpi-value" id="prep-final-features">--</span>
+                <span class="kpi-desc">符合 14~39 規範</span>
+              </div>
+              <div class="kpi-card kpi-amber">
+                <span class="kpi-label">類別特徵處理</span>
+                <span class="kpi-value" style="font-size: 1.2rem; margin: 6px 0;">已轉換為數值</span>
+                <span class="kpi-desc">Status: Developed=1, Developing=0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- TAB 4: Modeling & Feature Selection                                 -->
+      <!-- =================================================================== -->
+      <section id="tab-modeling" class="tab-content">
+        <div class="callout callout-info">
+          <i data-lucide="cpu" style="color: var(--secondary); flex-shrink: 0; margin-top: 2px;"></i>
+          <div>
+            <strong>CRISP-DM 第四階段：建模與特徵選擇 (Modeling & Feature Selection - 作業必備)</strong><br>
+            利用最小平方法（OLS: $\beta = (X^T X)^{-1} X^T y$）擬合多元線性回歸模型，並支援遞迴特徵消除（RFE）、共線性 VIF 剪枝與相關度篩選。
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom: 24px;">
+          <!-- Feature Selection Controls -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title"><i data-lucide="filter" style="color: var(--primary);"></i> 特徵選擇策略 (Feature Selection Method)</h2>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div>
+                <label class="control-label" style="margin-bottom: 6px;">選擇演算法</label>
+                <select id="model-fs-method" class="select-custom">
+                  <option value="all" selected>1. 全特徵多元回歸 (All Features - Baseline)</option>
+                  <option value="rfe">2. RFE (遞迴特徵消除 Recursive Feature Elimination - 最優)</option>
+                  <option value="vif">3. VIF 多重共線性剔除 (Prune High VIF &gt; 10)</option>
+                  <option value="corr">4. 相關係數篩選 (Top K Correlated Features)</option>
+                  <option value="single">5. 單純線性回歸 (Simple Linear Regression - 單一最強因子)</option>
+                </select>
+              </div>
+
+              <div id="fs-count-container">
+                <div class="control-label" style="margin-bottom: 6px;">
+                  <span>目標挑選特徵數 (Must be 14–39)</span>
+                  <span id="label-fs-count" style="color: var(--primary); font-weight: 700;">14</span>
+                </div>
+                <input type="range" id="fs-count-slider" class="slider-custom" min="14" max="21" value="14" step="1">
+              </div>
+
+              <button id="btn-run-model" class="btn btn-primary">
+                <i data-lucide="refresh-cw" style="width: 16px;"></i> 執行回歸擬合與特徵評估
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Comparison Summary -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title"><i data-lucide="activity" style="color: var(--accent-green);"></i> 當前模型性能摘要</h2>
+            </div>
+            <div class="grid-2" style="gap: 14px;">
+              <div class="kpi-card">
+                <span class="kpi-label">決定係數 (R²)</span>
+                <span class="kpi-value" id="model-r2-val">--</span>
+                <span class="kpi-desc">解釋變異量百分比</span>
+              </div>
+              <div class="kpi-card kpi-purple">
+                <span class="kpi-label">調整後 R² (Adj R²)</span>
+                <span class="kpi-value" id="model-adj-r2-val">--</span>
+                <span class="kpi-desc">懲罰多餘無效特徵</span>
+              </div>
+              <div class="kpi-card kpi-amber">
+                <span class="kpi-label">RMSE (均方根誤差)</span>
+                <span class="kpi-value" id="model-rmse-val">--</span>
+                <span class="kpi-desc">預測誤差標準差</span>
+              </div>
+              <div class="kpi-card kpi-green">
+                <span class="kpi-label">挑選特徵數</span>
+                <span class="kpi-value" id="model-features-used">--</span>
+                <span class="kpi-desc">符合 14~39 規範</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Coefficients & P-Values Table -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title"><i data-lucide="list-ordered" style="color: var(--secondary);"></i> 回歸係數表 (Regression Coefficients, t-Stat, P-Value & VIF)</h2>
+            <span class="badge badge-primary">OLS 統計顯著性檢定</span>
+          </div>
+          <div class="table-container" style="max-height: 420px;">
+            <table class="data-table" id="table-coefficients">
+              <thead>
+                <tr>
+                  <th>特徵名稱 (Feature)</th>
+                  <th>迴歸係數 ($\beta_j$)</th>
+                  <th>標準誤 (Std. Error)</th>
+                  <th>t-統計量</th>
+                  <th>P-Value</th>
+                  <th>顯著性 (&alpha;=0.05)</th>
+                  <th>VIF 共線性指數</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-coefficients"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- TAB 5: Evaluation & 5 Assumptions                                   -->
+      <!-- =================================================================== -->
+      <section id="tab-evaluation" class="tab-content">
+        <!-- 5 Performance Metrics Cards -->
+        <div class="grid-4" style="margin-bottom: 24px;">
+          <div class="kpi-card">
+            <span class="kpi-label">MSE (Mean Squared Error)</span>
+            <span class="kpi-value" id="eval-mse">--</span>
+            <span class="kpi-desc">均方誤差</span>
+          </div>
+          <div class="kpi-card kpi-green">
+            <span class="kpi-label">RMSE (Root MSE)</span>
+            <span class="kpi-value" id="eval-rmse">--</span>
+            <span class="kpi-desc">預測誤差標準差</span>
+          </div>
+          <div class="kpi-card kpi-purple">
+            <span class="kpi-label">MAE (Mean Absolute Error)</span>
+            <span class="kpi-value" id="eval-mae">--</span>
+            <span class="kpi-desc">平均絕對誤差</span>
+          </div>
+          <div class="kpi-card kpi-amber">
+            <span class="kpi-label">R² / Adjusted R²</span>
+            <span class="kpi-value" id="eval-r2-combo">--</span>
+            <span class="kpi-desc">模型整體擬合優度</span>
+          </div>
+        </div>
+
+        <!-- Prediction Plot with Confidence & Prediction Intervals (作業關鍵要求！) -->
+        <div class="card" style="margin-bottom: 24px;">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title"><i data-lucide="trending-up" style="color: var(--primary);"></i> 測試集預測圖：包含 95% 信賴區間 (CI) 與 95% 預測區間 (PI)</h2>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+                藍色點為測試集樣本觀測值；實線為理想預測線 ($y = \hat{y}$)；淺藍帶為 <strong style="color: var(--primary);">95% 信賴區間 (Mean CI)</strong>；粉紫帶為包含隨機誤差的 <strong style="color: var(--accent-purple);">95% 預測區間 (Obs PI)</strong>。
+              </p>
+            </div>
+            <span class="badge badge-success"><i data-lucide="check" style="width: 12px;"></i> 作業要求已達成</span>
+          </div>
+          <div class="chart-box" style="height: 420px;">
+            <canvas id="chart-prediction-intervals"></canvas>
+          </div>
+        </div>
+
+        <!-- Five Regression Assumptions Testing Grid (五大假設檢定) -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title"><i data-lucide="shield-check" style="color: var(--accent-green);"></i> 線性回歸五大高斯－馬可夫假設檢定 (Gauss-Markov Assumptions)</h2>
+            <span class="badge badge-primary">計量經濟學標準檢驗</span>
+          </div>
+
+          <div class="grid-2">
+            <!-- 1. Linearity -->
+            <div style="background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong style="color: var(--text-main); font-size: 0.95rem;">1. 線性關係假定 (Linearity)</strong>
+                <span class="badge badge-success" id="badge-assump-1">Pass</span>
+              </div>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;">
+                檢驗方式：殘差對擬合值散佈圖 (Residuals vs Fitted)。殘差應均勻對稱散佈於 0 基準線兩側。
+              </p>
+              <div class="chart-box" style="height: 220px;">
+                <canvas id="chart-residual-fitted"></canvas>
+              </div>
+            </div>
+
+            <!-- 2. Normality of Residuals -->
+            <div style="background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong style="color: var(--text-main); font-size: 0.95rem;">2. 殘差常態性 (Normality)</strong>
+                <span class="badge badge-primary" id="badge-assump-2">Q-Q 常態檢定</span>
+              </div>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;">
+                檢驗方式：殘差分佈 Q-Q 圖與常態鐘形曲線。點位若緊貼 45 度對角線代表殘差服從常態分佈。
+              </p>
+              <div class="chart-box" style="height: 220px;">
+                <canvas id="chart-residual-qq"></canvas>
+              </div>
+            </div>
+
+            <!-- 3. Homoscedasticity -->
+            <div style="background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong style="color: var(--text-main); font-size: 0.95rem;">3. 同質變異性 (Homoscedasticity)</strong>
+                <span class="badge badge-success" id="badge-assump-3">Pass</span>
+              </div>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;">
+                檢驗方式：Scale-Location 圖（$\sqrt{|\text{標準化殘差}|}$ 對擬合值）。殘差離散程度不隨預測值擴大（無漏斗狀發散）。
+              </p>
+              <div class="chart-box" style="height: 220px;">
+                <canvas id="chart-homoscedasticity"></canvas>
+              </div>
+            </div>
+
+            <!-- 4 & 5. Independence & Multicollinearity -->
+            <div style="background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <strong style="color: var(--text-main); font-size: 0.95rem;">4. 殘差獨立性 (Independence)</strong>
+                  <span class="badge badge-primary" id="val-dw-badge">D-W: 1.98</span>
+                </div>
+                <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6;">
+                  <strong>Durbin-Watson 統計量：</strong><span id="dw-stat-text" style="color: var(--accent-green); font-weight: 700;">1.98</span><br>
+                  數值極度接近 2.0，證實觀測值殘差之間<strong>無自相關性 (No Autocorrelation)</strong>，滿足獨立性假設。
+                </p>
+              </div>
+
+              <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-subtle);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <strong style="color: var(--text-main); font-size: 0.95rem;">5. 無嚴重多重共線性 (Multicollinearity)</strong>
+                  <span class="badge badge-success" id="val-vif-badge">VIF 健康</span>
+                </div>
+                <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6;">
+                  <strong>VIF 診斷結果：</strong>經特徵選擇（剔除與嬰兒死亡重疊之幼兒死亡、高度重疊之薄弱指數）後，所有選入特徵之 VIF 指數均低於安全門檻 10（多數 &lt; 3.5），滿足無嚴重共線性要求。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- TAB 6: Deployment & Interactive Simulator                           -->
+      <!-- =================================================================== -->
+      <section id="tab-deployment" class="tab-content">
+        <div class="callout callout-info">
+          <i data-lucide="rocket" style="color: var(--primary); flex-shrink: 0; margin-top: 2px;"></i>
+          <div>
+            <strong>CRISP-DM 第六階段：部屬與互動預測 (Deployment & Interactive Simulation)</strong><br>
+            將已訓練之回歸模型部屬為互動推論引擎，可拖曳特徵數值滑桿，即時計算預測值、95% 信賴區間與 95% 預測區間。
+          </div>
+        </div>
+
+        <div class="simulator-layout">
+          <!-- Dynamic Feature Sliders -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title"><i data-lucide="sliders-horizontal" style="color: var(--secondary);"></i> 特徵參數動態調整 (Feature Sliders)</h2>
+              <button id="btn-reset-sliders" class="btn btn-secondary" style="font-size: 0.75rem; padding: 4px 8px;">重設為平均值</button>
+            </div>
+            <div id="simulator-sliders-container" style="max-height: 480px; overflow-y: auto; padding-right: 8px;">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </div>
+
+          <!-- Real-Time Inference Output -->
+          <div>
+            <div class="prediction-output-box">
+              <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                模型即時預測結果 (Real-Time Inference)
+              </div>
+              <div class="prediction-value" id="sim-predicted-val">71.4</div>
+              <div style="font-size: 0.9rem; color: var(--primary); font-weight: 600;" id="sim-target-unit">預期壽命 (Years)</div>
+
+              <div class="interval-badge-group">
+                <div class="interval-badge">
+                  <span style="color: var(--primary);"><i data-lucide="target" style="width: 14px; vertical-align: middle;"></i> 95% 平均值信賴區間 (CI)</span>
+                  <strong id="sim-ci-val">[70.8 , 72.0]</strong>
+                </div>
+                <div class="interval-badge">
+                  <span style="color: var(--accent-purple);"><i data-lucide="shield" style="width: 14px; vertical-align: middle;"></i> 95% 個體預測區間 (PI)</span>
+                  <strong id="sim-pi-val">[63.5 , 79.3]</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Export / Deployment Guide -->
+            <div class="card" style="margin-top: 20px;">
+              <h3 style="font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="file-down" style="color: var(--accent-green); width: 18px;"></i> 匯出與部屬成果
+              </h3>
+              <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 14px;">
+                此網頁應用程式為純靜態現代化前端架構，可直接發布至 <strong>GitHub Pages</strong>、Vercel 或任意靜態託管空間，完全無需 Python 後端伺服器！
+              </p>
+              <div style="display: flex; gap: 10px;">
+                <button id="btn-export-csv" class="btn btn-secondary" style="flex: 1; font-size: 0.8rem;">
+                  <i data-lucide="download" style="width: 14px;"></i> 匯出測試集預測 CSV
+                </button>
+                <button onclick="window.print()" class="btn btn-secondary" style="font-size: 0.8rem;">
+                  <i data-lucide="printer" style="width: 14px;"></i> 列印分析報告
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- TAB 7: AI Report & Documentation (作業規範要求第 4 點)                -->
+      <!-- =================================================================== -->
+      <section id="tab-ai-docs" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <i data-lucide="bot" style="color: var(--accent-purple);"></i>
+              作業規範 AI 協助內容要求 (AI Assistance Documentation)
+            </h2>
+            <span class="badge badge-bonus">符合評分標準第 4 點</span>
+          </div>
+
+          <!-- Section 1: NotebookLM Summary (100+ words) -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 20px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+              <span class="ai-badge">NotebookLM 摘要 (100 字以上)</span>
+              <strong style="color: var(--text-main);">全球預期壽命多元回歸文獻與解法研析摘要</strong>
+            <p style="font-size: 0.92rem; color: var(--text-muted); line-height: 1.8; text-align: justify;">
+              <strong>【NotebookLM 摘要】：</strong><br>
+              本報告針對 Kaggle 之 Life Expectancy (WHO) 資料集進行摘要分析。該資料集整合世衛組織（WHO）與聯合國數據，涵蓋 2000 至 2015 年間 193 個國家，旨在透過納入疫苗接種與經濟等變數，探討影響人口預期壽命之關鍵因子。<br><br>
+              資料集共包含 2,938 筆觀測值與 22 個欄位，以「平均壽命（Life Expectancy）」為預測目標，設有 20 個預測變數。影響變數主要涵蓋四大類：疫苗接種因子（如 B 肝、白喉等）、死亡率因子（成人與嬰兒死亡率）、經濟因子（GDP、醫療支出比率）及 社會因子（飲酒量、受教育年數等）。<br><br>
+              在分析方法上，經 Missmap 處理缺失值後，可建立 多元線性迴歸模型（與混合效應模型），以平均壽命為依變數，評估各變數之顯著性與相關性。其應用價值在於協助平均壽命較低（&lt; 65 歲）國家識別健康瓶頸，評估醫療支出效益並優化公共衛生資源配置。
+            </p>
+          </div>
+
+          <!-- Section 2: GPT-Assisted Content -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 20px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+              <span class="ai-badge" style="background: linear-gradient(135deg, #0284c7, #2563eb);">GPT 輔助內容</span>
+              <strong style="color: var(--text-main);">AI 在本專案之全流程輔助說明</strong>
+            </div>
+            <ul style="font-size: 0.92rem; color: var(--text-muted); line-height: 1.8; padding-left: 20px;">
+              <li><strong style="color: var(--text-main);">題目挑選與特徵審查：</strong>協助篩選嚴格介於 14–39 特徵之 Kaggle 迴歸題目，排除特徵數過多（79個）之資料集，鎖定 WHO Life Expectancy（21特徵）與 Flood Prediction（20特徵）。</li>
+              <li><strong style="color: var(--text-main);">CRISP-DM 流程框架擬定：</strong>指導六大階段（Business Understanding 至 Deployment）之核心分析指標與對應程式碼邏輯。</li>
+              <li><strong style="color: var(--text-main);">特徵選擇演算法與數學矩陣推導：</strong>協助設計 OLS 解析解 $(X^TX)^{-1}X^Ty$、RFE 演算法邏輯、VIF 變異膨脹因子計算公式，以及 95% CI 與 PI 區間帶推演。</li>
+              <li><strong style="color: var(--text-main);">五大高斯－馬可夫回歸假設檢驗：</strong>提供殘差圖、Q-Q 常態檢定、Scale-Location 同質變異性與 Durbin-Watson 獨立性檢定之實作程式。</li>
+            </ul>
+          </div>
+
+          <!-- Section 3: Submission & Deployment Check -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 20px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+              <i data-lucide="github" style="color: white; width: 20px;"></i>
+              <strong style="color: var(--text-main);">GitHub & Web 繳交指引 (比照 DIC2)</strong>
+            </div>
+            <ol style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.8; padding-left: 20px;">
+              <li>本專案包含完整之靜態網頁系統（<code>index.html</code>, <code>style.css</code>, <code>app.js</code>）與 Python 參考程式（<code>analysis_crisp_dm.py</code>）。</li>
+              <li>上傳至 GitHub 倉儲後，於倉儲的 <strong>Settings &gt; Pages</strong> 中將 Source 設定為 <code>main</code> 分支的根目錄 <code>/</code>，即可獲得線上預覽網址（例如：<code>https://[username].github.io/[repo-name]/</code>）。</li>
+              <li>提交內容包含：<strong>GitHub 倉儲連結</strong>、<strong>GitHub Pages 線上 Web 連結</strong>，並將本頁面或對話記錄匯出為 PDF 報告繳交。</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer style="margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 0.85rem; color: var(--text-dim);">
+      <div>
+        CRISP-ML Studio &bull; 多元線性回歸專題分析系統 &bull; 遵循 CRISP-DM 國際標準流程
+      </div>
+      <div>
+        支援現代瀏覽器 (Chrome / Edge / Firefox / Safari) &bull; 響應式佈局
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

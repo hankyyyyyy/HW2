@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>作業分析報告書 - 多元線性回歸分析 (CRISP-DM)</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+      line-height: 1.8;
+      color: #1e293b;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 30px;
+    }
+    h1 { font-size: 2rem; border-bottom: 2px solid #0284c7; padding-bottom: 10px; color: #0f172a; }
+    h2 { font-size: 1.4rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-top: 30px; color: #1e293b; }
+    h3 { font-size: 1.15rem; margin-top: 20px; color: #334155; }
+    p, li { font-size: 0.95rem; text-align: justify; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.9rem; }
+    th, td { border: 1px solid #cbd5e1; padding: 10px 14px; text-align: left; }
+    th { background: #f1f5f9; font-weight: 700; }
+    blockquote {
+      background: #f8fafc;
+      border-left: 4px solid #0284c7;
+      padding: 14px 20px;
+      margin: 20px 0;
+      color: #334155;
+      border-radius: 0 8px 8px 0;
+    }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: Consolas, monospace; font-size: 0.9em; }
+    @page { margin: 18mm 20mm; size: A4; }
+  </style>
+</head>
+<body>
+  <h1>多元線性回歸 (Multiple Linear Regression) 完整分析報告</h1>
+  <p><strong>基於 CRISP-DM 國際標準流程之全球預期壽命與災害機率預測系統</strong></p>
+  <hr>
+
+  <h2>摘要 (Abstract)</h2>
+  <p>本專案為實踐 CRISP-DM 六大生命週期之多元線性回歸分析專題。為符合特徵數規範（13 &lt; Features &lt; 40），專案以 <strong>Kaggle: Life Expectancy (WHO)</strong>（21 個輸入特徵）為主要研究題目，並結合 <strong>Kaggle S4E5: Flood Prediction Dataset</strong>（20 個輸入特徵）作為下拉對比題目。分析流程涵蓋資料前處理、多重共線性診斷、遞迴特徵消除（RFE）、五大高斯－馬可夫回歸假設檢定，並建立包含 <strong>95% 信賴區間 (CI)</strong> 與 <strong>95% 預測區間 (PI)</strong> 之預測模型。此外，本專案部屬為高互動性 Web 應用系統（<strong>CRISP-ML Studio</strong>），支援雙題目下拉切換（加分 +1 分）與任意 URL/本地 CSV 自訂資料集分析（加分 +2 分）。</p>
+
+  <h2>一、CRISP-DM Phase 1: 業務理解 (Business Understanding)</h2>
+  <p>預期壽命（Life Expectancy）是衡量一個國家社會福祉、公衛基礎建設與經濟發展水準之核心指標。世界衛生組織（WHO）與聯合國匯總 193 國自 2000 年至 2015 年之衛生指標。本專案之核心商業與公衛決策問題為：</p>
+  <ol>
+    <li><strong>關鍵驅動因子識別：</strong> 究竟是「總體經濟財富（GDP）」還是「公衛基礎防禦（疫苗接種率、教育年數、防範 HIV/AIDS）」更能顯著延長人均壽命？</li>
+    <li><strong>資源最適配置：</strong> 提供開發中國家衛生決策者具統計顯著性之迴歸權重，在有限財政下極大化預期壽命提升效益。</li>
+  </ol>
+  <p><strong>資料集來源：</strong> Kaggle - <a href="https://www.kaggle.com/datasets/kumarajarshi/life-expectancy-who">Life Expectancy (WHO) Estimation</a>，2,938 筆觀測值，21 個輸入特徵（扣除目標欄位），符合 14～39 特徵合規性要求。</p>
+
+  <h2>二、CRISP-DM Phase 2: 資料理解 (Data Understanding)</h2>
+  <p>資料集包含四大面向：人口與死亡率指標（Adult Mortality, infant deaths, under-five deaths）、疾病預防與疫苗接種（Hepatitis B, Polio, Diphtheria）、生活水準與經濟指標（GDP, percentage expenditure, Income composition of resources, Schooling）、生活型態與營養（Alcohol, BMI, thinness）。</p>
+  <p><strong>相關性分析結果：</strong></p>
+  <ul>
+    <li>最強正相關因子：<code>Schooling</code>（受教育年數，r = +0.752）、<code>Income composition of resources</code>（所得組成，r = +0.725）。</li>
+    <li>最強負相關因子：<code>Adult Mortality</code>（成人死亡率，r = -0.696）、<code>HIV/AIDS</code>（愛滋病毒盛行率，r = -0.556）。</li>
+  </ul>
+
+  <h2>三、CRISP-DM Phase 3: 資料準備 (Data Preparation)</h2>
+  <p>檢視資料集第 438～464 列之 <strong>象牙海岸 (Côte d'Ivoire)</strong> 與 <strong>維德角 (Cabo Verde)</strong>，其 GDP、Schooling 或 Hepatitis B 存在部分年份調查缺失。本專案採用 <strong>中位數 (Median) 補值法</strong>，防止離群值拉偏均值。將國家發展狀態（<code>Status</code>）進行 One-Hot 二元編碼（Developed=1, Developing=0），並切分 80% 訓練集與 20% 測試集。</p>
+
+  <h2>四、CRISP-DM Phase 4: 建模與特徵選擇 (Modeling & Feature Selection)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>特徵選擇與回歸模型</th>
+        <th>選取特徵數</th>
+        <th>測試集 R²</th>
+        <th>測試集 RMSE</th>
+        <th>說明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>0. 單純線性回歸 (Simple LR)</strong></td>
+        <td>1</td>
+        <td>0.565</td>
+        <td>6.28 年</td>
+        <td>作業對照項！僅以單一最強因子 Schooling 擬合。</td>
+      </tr>
+      <tr>
+        <td><strong>1. 全特徵模型 (Baseline)</strong></td>
+        <td>21</td>
+        <td>0.819</td>
+        <td>4.02 年</td>
+        <td>包含全部 21 個特徵，未處理共線性。</td>
+      </tr>
+      <tr>
+        <td><strong>2. 遞迴特徵消除 (RFE)</strong></td>
+        <td><strong>14</strong></td>
+        <td><strong>0.824</strong></td>
+        <td><strong>3.96 年</strong></td>
+        <td><strong>最優模型！</strong> 剃除不顯著特徵，保留 14 個核心特徵。</td>
+      </tr>
+      <tr>
+        <td><strong>3. VIF 剪枝法</strong></td>
+        <td>16</td>
+        <td>0.815</td>
+        <td>4.07 年</td>
+        <td>迭代刪除 VIF &gt; 10 特徵（剔除 under-five deaths）。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>五、CRISP-DM Phase 5: 模型評估與五大假設檢定 (Evaluation)</h2>
+  <p><strong>1. 評估指標：</strong> R² = 0.824, Adjusted R² = 0.819, RMSE = 3.96 年, MAE = 2.94 年。</p>
+  <p><strong>2. 預測圖與 95% 信賴區間 (CI) vs 預測區間 (PI)：</strong></p>
+  <ul>
+    <li>95% 平均值信賴區間 (CI) 衡量母體平均壽命期望值的不確定性，範圍較窄。</li>
+    <li>95% 個體預測區間 (PI) 包含單一國家隨機誤差項，範圍較寬。測試集中 95.4% 之實際觀測值均準確落在 PI 區間帶內。</li>
+  </ul>
+  <p><strong>3. 五大高斯－馬可夫假定檢驗：</strong> 線性度檢驗合格（殘差均勻對稱）、殘差常態性（Q-Q Plot 線性貼合）、同質變異性（Scale-Location 無漏斗發散）、獨立性（Durbin-Watson = 1.984 ≈ 2.0）、無嚴重多重共線性（RFE 篩選後所有變數 VIF &lt; 4.2）。</p>
+
+  <h2>六、CRISP-DM Phase 6: 部屬與加分項目 (Deployment)</h2>
+  <p>完成響應式 Web 應用系統（CRISP-ML Studio）：</p>
+  <ul>
+    <li><strong>加總分 1 分：</strong> 實作下拉選單切換 Problem 1 (WHO 預期壽命，21特徵) 與 Problem 2 (Kaggle 洪水機率預測，20特徵)。</li>
+    <li><strong>加總分 2 分：</strong> 實作任意輸入 Dataset URL (預設 50_Startups.csv) 與本地 CSV 檔案上傳。</li>
+    <li><strong>即時推論模擬器：</strong> 動態滑桿即時計算預測壽命及 95% CI / PI 數值邊界。</li>
+  </ul>
+
+  <h2>七、作業規範要求：AI 協助與摘要專區</h2>
+  <h3>7.1 NotebookLM 摘要（100 字以上）</h3>
+  <blockquote>
+    <strong>【NotebookLM 摘要】：</strong><br>
+    本報告針對 Kaggle 之 Life Expectancy (WHO) 資料集進行摘要分析。該資料集整合世衛組織（WHO）與聯合國數據，涵蓋 2000 至 2015 年間 193 個國家，旨在透過納入疫苗接種與經濟等變數，探討影響人口預期壽命之關鍵因子。<br><br>
+    資料集共包含 2,938 筆觀測值與 22 個欄位，以「平均壽命（Life Expectancy）」為預測目標，設有 20 個預測變數。影響變數主要涵蓋四大類：疫苗接種因子（如 B 肝、白喉等）、死亡率因子（成人與嬰兒死亡率）、經濟因子（GDP、醫療支出比率）及 社會因子（飲酒量、受教育年數等）。<br><br>
+    在分析方法上，經 Missmap 處理缺失值後，可建立 多元線性迴歸模型（與混合效應模型），以平均壽命為依變數，評估各變數之顯著性與相關性。其應用價值在於協助平均壽命較低（&lt; 65 歲）國家識別健康瓶頸，評估醫療支出效益並優化公共衛生資源配置。
+  </blockquote>
+
+  <h3>7.2 GPT 輔助內容標示</h3>
+  <ul>
+    <li><strong>題目挑選與特徵審核：</strong> 篩選並驗證 14～39 輸入特徵合規性，鎖定 WHO Life Expectancy（21特徵）與 Flood Prediction（20特徵）。</li>
+    <li><strong>CRISP-DM 流程設計：</strong> 完整定義 Business Understanding 至 Deployment 六大階段之標準流程架構。</li>
+    <li><strong>演算法與數學推導：</strong> 協助實作 OLS 解析解、RFE 特徵消除、VIF 共線性檢定及 95% CI/PI 區間計算公式。</li>
+    <li><strong>Web 系統建置：</strong> 設計深色玻璃擬態架構，實作雙題目切換（+1分）與自訂資料集輸入（+2分）。</li>
+  </ul>
+
+  <h2>八、GitHub 與 Web 繳交資訊 (比照 DIC2)</h2>
+  <ul>
+    <li><strong>GitHub 倉儲：</strong> 包含 <code>index.html</code>, <code>style.css</code>, <code>app.js</code>, <code>analysis_crisp_dm.py</code>, 資料集與報告文件。</li>
+    <li><strong>Web 線上執行系統：</strong> 已配置 GitHub Pages 靜態託管支援。</li>
+  </ul>
+</body>
+</html>
