@@ -3,17 +3,24 @@
 > **基於 CRISP-DM 六大階段之多元線性回歸分析與互動式統計診斷平台**  
 > 專為符合「**13 < 輸入特徵數 < 40**」規範與 Kaggle 公開資料集回歸作業設計。
 
+---
+
+## 🌐 【點此直接進入 Web 線上執行系統】
+👉 ### **[https://hankyyyyyy.github.io/HW2/](https://hankyyyyyy.github.io/HW2/)** 👈
+
+[![Live Demo](https://img.shields.io/badge/Live_Web_App-hankyyyyyy.github.io%2FHW2-0284c7?style=for-the-badge&logo=googlechrome&logoColor=white)](https://hankyyyyyy.github.io/HW2/)
 [![Features Compliant](https://img.shields.io/badge/Features-21%20Compliant%20(14--39)-blue.svg)](#)
 [![CRISP-DM Standard](https://img.shields.io/badge/Process-CRISP--DM%20Phase%201~6-green.svg)](#)
 [![Bonus Points](https://img.shields.io/badge/Bonus-Dual%20Problems%20(%2B1)%20%2B%20Custom%20URL%20(%2B2)-gold.svg)](#)
-[![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](#)
 
 ---
 
 ## 🌟 作業要求與加分項落實清單
 
+- [x] **主要繳交 Web 成果：** 👉 **[點此直接開啟 Web 互動應用系統 (https://hankyyyyyy.github.io/HW2/)](https://hankyyyyyy.github.io/HW2/)**
+- [x] **主要繳交 GitHub 倉儲：** [https://github.com/hankyyyyyy/HW2](https://github.com/hankyyyyyy/HW2)
 - [x] **資料集來源：** Kaggle 公開資料集 [Life Expectancy (WHO)](https://www.kaggle.com/datasets/kumarajarshi/life-expectancy-who)，輸入特徵數為 **21 個**，完全落在 $14 \le \text{Features} \le 39$ 範圍內。
-- [x] **分析模型：** 多元線性回歸（Multiple Linear Regression, OLS 解析解 $\hat{\beta} = (X^TX)^{-1}X^Ty$）。
+- [x] **分析模型：** 多元線性回歸（Multiple Linear Regression, OLS 解析解 $\hat{\beta} = (X^TX)^{-1}X^Ty$）與單純線性回歸對照。
 - [x] **特徵選擇 (Feature Selection)：** 實作並比較全特徵 (Baseline)、遞迴特徵消除 (RFE)、VIF 共線性剔除與皮爾森相關係數篩選。
 - [x] **模型評估 (Model Evaluation)：** 完整輸出 MSE, RMSE, MAE, $R^2$ 與 Adjusted $R^2$。
 - [x] **預測圖與區間帶：** 提供測試集擬合預測圖，精確繪製 **95% 平均值信賴區間 (CI)** 與 **95% 個體預測區間 (PI)** 陰影帶。
@@ -30,7 +37,6 @@
   - 支援輸入任何公開 CSV 網址（預設包含作業範例 `50_Startups.csv`）
   - 支援本地 CSV 檔案上傳
 - [x] **AI 協助規範：** 報告中明確標示「GPT 輔助內容」與 100 字以上「NotebookLM 摘要」。
-- [x] **繳交格式：** 比照 DIC2，同時提供 GitHub 倉儲程式碼與 Web 線上靜態應用（GitHub Pages）。
 
 ---
 
@@ -72,7 +78,7 @@ python analysis_crisp_dm.py
    ```
 3. 進入 GitHub 倉儲的 **Settings > Pages**。
 4. 在 **Build and deployment > Branch** 選擇 `main` 與 `/ (root)`，點擊 **Save**。
-5. 等待 1~2 分鐘，即可獲得線上預覽網址（例如：`https://<username>.github.io/<repo-name>/`），直接複製填寫於作業繳交表單！
+5. 等待 1~2 分鐘，即可獲得線上預覽網址：👉 **[https://hankyyyyyy.github.io/HW2/](https://hankyyyyyy.github.io/HW2/)**，直接複製填寫於作業繳交表單！
 
 ---
 

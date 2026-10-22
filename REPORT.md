@@ -162,6 +162,6 @@ $$\hat{\beta} = (X^T X)^{-1} X^T y$$
 2. **GitHub Pages 一鍵上線：**
    - 將本資料夾推送到 GitHub Repository。
    - 至倉儲 **Settings > Pages**，在 **Build and deployment > Branch** 選擇 `main` 與 `/ (root)`，點擊 Save。
-   - 即可取得線上即時 Web 預覽網址（例如：`https://<username>.github.io/<repo-name>/`）。
+   - 即可取得線上即時 Web 預覽網址：👉 **[https://hankyyyyyy.github.io/HW2/](https://hankyyyyyy.github.io/HW2/)**。
 3. **對話記錄 PDF 匯出：**
    - 可直接使用瀏覽器或 pdfCrowd 將本專案頁面與 AI 對話記錄匯出為 PDF 檔案提交。
